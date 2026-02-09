@@ -1,0 +1,44 @@
+name: Publish to NuGet
+
+on:
+  push:
+    tags:
+      - "v*.*.*"   # e.g. v0.1.0
+
+permissions:
+  contents: read
+
+jobs:
+  build-pack-publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build -c Release --no-restore
+
+      # Optional: run tests if you have them
+      # - name: Test
+      #   run: dotnet test -c Release --no-build
+
+      - name: Pack
+        run: dotnet pack SecretsBak/SecretsBak.csproj -c Release --no-build -o ./artifacts
+
+      - name: Publish to NuGet
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          dotnet nuget push "./artifacts/*.nupkg" \
+            --api-key "$NUGET_API_KEY" \
+            --source "https://api.nuget.org/v3/index.json" \
+            --skip-duplicate
