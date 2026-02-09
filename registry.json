@@ -1,3 +1,10 @@
 {
-  "targets": {}
+  "targets": {
+    "buzapay": {
+      "bucket": "dev-secret1s",
+      "region": "us-east-1",
+      "key": "secrets/buzapay/dev/secrets.json",
+      "kmsKeyId": ""
+    }
+  }
 }
