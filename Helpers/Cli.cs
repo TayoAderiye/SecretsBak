@@ -87,4 +87,55 @@ public static class Cli
         return path.Split(Path.PathSeparator)
             .Any(p => string.Equals(p.TrimEnd('/'), tools, StringComparison.OrdinalIgnoreCase));
     }
+    static async Task PullViaGithubAsync(string ownerRepo, string projectCsproj)
+    {
+        GithubGh.EnsureGhExists();
+        GithubGh.EnsureAuthenticated();
+
+        GithubGh.DispatchPullWorkflow(ownerRepo);
+        Console.WriteLine("✅ Dispatched pull to GitHub Actions. Waiting ~20–60s then downloading artifact...");
+
+        // (v1) simple wait; you can poll runs for completion next.
+        await Task.Delay(TimeSpan.FromSeconds(25));
+
+        var zipPath = Path.Combine(Path.GetTempPath(), "secretsbak-artifact.zip");
+        GithubGh.DownloadLatestArtifact(ownerRepo, "secretsbak-secrets", zipPath);
+
+        var extractDir = Path.Combine(Path.GetTempPath(), "secretsbak-artifact");
+        if (Directory.Exists(extractDir)) Directory.Delete(extractDir, true);
+        Directory.CreateDirectory(extractDir);
+
+        System.IO.Compression.ZipFile.ExtractToDirectory(zipPath, extractDir);
+        var downloaded = Path.Combine(extractDir, "secrets.json");
+        if (!File.Exists(downloaded))
+            throw new InvalidOperationException("Downloaded artifact did not contain secrets.json");
+
+        var secretsId = DotnetUserSecrets.GetUserSecretsId(projectCsproj);
+        var secretsPath = DotnetUserSecrets.GetSecretsJsonPath(secretsId);
+        Directory.CreateDirectory(Path.GetDirectoryName(secretsPath)!);
+
+        File.Copy(downloaded, secretsPath, overwrite: true);
+        Console.WriteLine($"✅ Pulled secrets to {secretsPath}");
+    }
+
+
+    static async Task PushViaGithubAsync(string ownerRepo, string projectCsproj)
+    {
+        GithubGh.EnsureGhExists();
+        GithubGh.EnsureAuthenticated();
+
+        var secretsId = DotnetUserSecrets.GetUserSecretsId(projectCsproj);
+        var secretsPath = DotnetUserSecrets.GetSecretsJsonPath(secretsId);
+
+        if (!File.Exists(secretsPath))
+            throw new FileNotFoundException("secrets.json not found.", secretsPath);
+
+        var bytes = await File.ReadAllBytesAsync(secretsPath);
+        var b64 = Convert.ToBase64String(bytes);
+
+        GithubGh.DispatchPushEvent(ownerRepo, b64);
+
+        Console.WriteLine("✅ Dispatched push to GitHub Actions (S3 upload happens in workflow).");
+    }
+
 }
