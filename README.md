@@ -2,7 +2,7 @@
 
 Backup and restore **.NET User Secrets** (`secrets.json`) to/from **AWS S3**.
 
-This is useful when you work across multiple machines (macOS, Windows, Linux, EC2) and want a quick way to sync your local `.NET User Secrets`.
+This is useful when you work across multiple machines (macOS, Windows) and want a quick way to sync your local `.NET User Secrets`.
 
 ---
 
@@ -39,7 +39,7 @@ dotnet tool update --global SecretsBak
   - `~/.aws/credentials`
   - environment variables
   - AWS SSO
-  - IAM Role (EC2, ECS, etc.)
+  - IAM Role
 
 You also need permissions for:
 
